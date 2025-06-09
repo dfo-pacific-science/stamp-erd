@@ -1,0 +1,254 @@
+// ERD for Sample Tracking Platform (PostgreSQL)
+// Added: Project table (dwc:Dataset) & Result table for analytical outputs
+
+Project SampleTrackingPlatform {
+  database_type: "PostgreSQL"
+  Note: "ERD based on DwC-DP; Results pulled via query interface, not stored permanently"
+}
+
+// DRAFT Enums to use controlled vocabulary terms published at a URI. Eg. https://vocab.nerc.ac.uk/collection/S06/current/S0600261/ 
+// Another example to use for enums: https://bioportal.bioontology.org/ontologies/SALMON/?p=classes&conceptid=http%3A%2F%2Fpurl.dataone.org%2Fodo%2FSALMON_00000639
+Enum EventType {
+  field_collection    [note: "DwC eventType values: MaterialGathering, Occurrence, Survey"]
+  preservation        [note: "Lab preservation step, see OBI term http://purl.obolibrary.org/obo/OBI_0000186"]
+  shipment            [note: "Shipment event for lab submission"]
+}
+
+Enum OrganismScope {
+  individual          [note: "DwC organismScope values: multicellular organism, pack, colony"]
+  group
+}
+
+Enum OccurrenceStatus {
+  detected            [note: "DwC occurrenceStatus values: detected, notDetected"]
+  notDetected
+}
+
+Enum LifeStage {
+  zygote
+  larva
+  juvenile
+  adult
+  seedling
+  flowering
+  fruiting
+}
+
+Enum Sex {
+  male
+  female
+  hermaphrodite
+  unknown
+}
+
+Enum MaterialType {
+  scale
+  tissue
+  otolith
+  whole_organism
+  other               [note: "Use UBERON or FMA URIs for anatomical parts"]
+}
+
+Enum ContainerType {
+  vial
+  envelope
+  tube
+  box
+}
+
+Enum Disposition {
+  in_collection
+  missing
+  voucher_elsewhere
+  duplicates_elsewhere
+}
+
+Enum Condition {
+  good
+  fair
+  poor
+  damaged
+  unknown
+}
+
+Enum AgentRole {
+  collector
+  lab_technician
+  identifier
+  transporter
+}
+
+Table Project {
+  datasetID       uuid       [pk, note: "dwc:datasetID — unique identifier for dataset but could be used to denote Project as well"]
+  datasetName     varchar    [note: "dwc:datasetName — human-readable name"]
+  description     text       [note: "dc:description — free-text summary"]
+  citation        text       [note: "dc:bibliographicCitation"]
+  uri             varchar    [note: "dc:identifier — persistent URI/DOI"]
+  version         varchar    [note: "dataset version"]
+  contactName     varchar    [note: "dc:creator or data custodian"]
+  contactEmail    varchar    [note: "dc:creatorContact info"]
+  rights          varchar    [note: "dc:rights — licensing info"]
+}
+
+Table Event {
+  eventID                    uuid       [pk]
+  parentEventID              uuid       [ref: > Event.eventID, note: "nesting, e.g. trip→fishingEvent, shipment→preservation"]
+  projectID                  uuid       [ref: > Project.datasetID]
+  eventType                  varchar    [note: "Controlled: MaterialGathering, Occurrence, Preservation, Shipment"]
+  eventDate                  timestamptz
+  verbatimLocality           varchar
+  decimalLatitude            numeric
+  decimalLongitude           numeric
+  geodeticDatum              varchar
+  coordinateUncertaintyInMeters numeric
+  protocolID                 uuid       [ref: > Protocol.protocolID]
+  locationID                 varchar    [note: "external spatial registry URI"]
+  tripID                     varchar    [note: "non-DwC trip/cruise code, alternatively could use a DwC DP: Survey table to define trips"]
+  remarks                    text
+}
+
+Table Organism {
+  organismID      uuid       [pk]
+  eventID         uuid       [ref: > Event.eventID]
+  organismScope   varchar    [note: "Controlled: individual, group"]
+  taxonID         varchar    [note: "external taxon URI"]
+  organismName    varchar
+  organismRemarks text
+}
+
+Table Occurrence {
+  occurrenceID         uuid     [pk]
+  organismID           uuid     [ref: > Organism.organismID]
+  eventID              uuid     [ref: > Event.eventID]
+  occurrenceStatus     varchar  [note: "Controlled: detected, notDetected"]
+  organismQuantity     varchar
+  organismQuantityType varchar
+  lifeStage            varchar
+  sex                  varchar
+  remarks              text
+}
+
+Table MaterialEntity {
+  materialEntityID          uuid       [pk]
+  eventID                   uuid       [ref: > Event.eventID]
+  organismID                uuid       [ref: > Organism.organismID]
+  fromMaterialEntityID      uuid       [ref: > MaterialEntity.materialEntityID]
+  type                      varchar    [note: "e.g., scale, tissue, otolith"]
+  preservationProtocolID    uuid       [ref: > Protocol.protocolID]
+  preservationMethod        varchar
+  condition                 varchar
+  disposition               varchar
+  containerID               uuid       [ref: > Container.containerID]
+  hasDNA                    boolean
+  catalogNumber             varchar
+  otherCatalogNumbers       varchar
+  collectedByID             uuid       [ref: > Agent.agentID]
+  objectQuantity            integer
+  objectQuantityType        varchar
+  preparations              varchar
+  verbatimLabel             text
+  associatedSequences       varchar
+  materialReferences        varchar
+  evidenceForOccurrenceID   uuid       [ref: > Occurrence.occurrenceID]
+  derivationEventID         uuid       [ref: > Event.eventID]
+  derivationType            varchar
+  isPartOfMaterialEntityID  uuid       [ref: > MaterialEntity.materialEntityID]
+  materialEntityRemarks     text
+}
+
+Table Container {
+  containerID   uuid    [pk]
+  label         varchar
+  shipmentID    uuid    [ref: > Shipment.shipmentID]
+  containerType varchar
+  remarks       text
+}
+
+Table Shipment {
+  shipmentID       uuid     [pk]
+  eventID          uuid     [ref: > Event.eventID]
+  shipmentDate     date
+  destination      varchar
+  senderAgentID    uuid     [ref: > Agent.agentID]
+  receivingAgentID uuid     [ref: > Agent.agentID]
+  remarks          text
+}
+
+Table Agent {
+  agentID     uuid    [pk]
+  name        varchar
+  role        varchar    [note: "collector, lab tech, courier, etc."]
+  affiliation varchar
+  contactInfo text
+}
+
+Table Protocol {
+  protocolID  uuid    [pk]
+  name        varchar  [note: "link to OBI/ENVO term via URI"]
+  description text
+  version     varchar
+  uri         varchar  [note: "persistent ontology URI"]
+}
+
+Table Identification {
+  identificationID              uuid       [pk]
+  organismID                    uuid       [ref: > Organism.organismID]
+  identificationType            varchar    [note: "e.g., GeneticSequence, MaterialEntity"]
+  verbatimIdentification        varchar
+  isAcceptedIdentification      boolean
+  taxonFormula                  varchar
+  typeStatus                    varchar
+  typeDesignationType           varchar
+  identifiedByID                uuid       [ref: > Agent.agentID]
+  dateIdentified                date
+  identificationReferences      varchar
+  identificationVerificationStatus varchar
+  taxonAssignmentMethod         varchar
+  taxonID                       varchar
+  scientificName                varchar
+  taxonRank                     varchar
+  higherClassificationName      varchar
+  higherClassificationRank      varchar
+  identificationRemarks         text
+}
+
+Table IdentificationMaterial {
+  identificationID uuid [ref: > Identification.identificationID]
+  materialID       uuid [ref: > MaterialEntity.materialEntityID]
+  Note: "join table linking IDs ↔ Materials"
+  Indexes {
+    (identificationID, materialID)
+  }
+}
+
+Table Reference {
+  referenceID uuid   [pk]
+  citation    text
+  doi         varchar
+  uri         varchar
+  notes       text
+}
+
+Table Result {
+  resultID            uuid     [pk]
+  eventID             uuid     [ref: > Event.eventID]
+  organismID          uuid     [ref: > Organism.organismID]
+  materialEntityID    uuid     [ref: > MaterialEntity.materialEntityID]
+  measurementType     varchar  [note: "dwc:measurementType or lab result type"]
+  measurementValue    numeric
+  measurementUnit     varchar  [note: "dwc:measurementUnit"]
+  resultDate          timestamptz
+  referenceID         uuid     [ref: > Reference.referenceID]
+  externalSource      varchar  [note: "API/source system identifier"]
+  remarks             text
+  // NOTE: This table can be implemented as a view or federated table pointing at external systems;
+  //       used purely for querying across events→organisms→samples→results.
+}
+
+Table Relationship {
+  relationshipID uuid   [pk]
+  subjectID      uuid
+  objectID       uuid
+  predicate      varchar  [note: "e.g., partOf, derivedFrom, subsampleOf"]
+  Note: "generic fallback for any edge-case link"
+}
