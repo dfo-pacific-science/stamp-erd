@@ -4,6 +4,8 @@
 
 NOTE: stamp_erd_dbdiagram.txt can be pasted into dbdiagram.io website app (free) to render an interactive ERD. I suggest we use [dbdiagram.io](https://dbdiagrm.io) to make updates and changes and to visualize the ERD, and then copy the code from dbdiagram.io and commit it overtop of stamp_erd_dbdiagram.txt file in this repo for version control.
 
+STAMP.png is the erd exported from dbdiagram.io and can be replaced and updated to follow the above workflow.
+
 ## 1. Foundational Standards & Translation Layer
 
 **To ensure long‑term interoperability and leverage broad community support, our core model is anchored in internationally recognized standards rather than bespoke DFO systems:**
