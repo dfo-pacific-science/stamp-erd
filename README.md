@@ -60,4 +60,3 @@ DFO's legacy fish‑data systems use inconsistent field names, acronyms, and tab
 | QC & Preservation       | MaterialEntity.condition     | ✔ `condition`, `disposition`, `preservationProtocolID`. |
 | Shipment to Lab         | Shipment                     | ✔ Links to `Agent`, retains `eventID` context. |
 | Lab Analysis & Identification | Identification, Protocol | ✔ DNA vs. scale ID via `identificationType` + `taxonAssignmentMethod`. |
-| Results Integration     | _Missing: Results table_     | • No dedicated `Result` table for analytical outputs (metrics, QC). |
