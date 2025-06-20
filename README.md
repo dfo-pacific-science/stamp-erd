@@ -27,36 +27,35 @@ DFO's legacy fish‑data systems use inconsistent field names, acronyms, and tab
 ## 2. Core Concepts & Tables
 
 **Below are the primary tables in the ERD, how they map to DwC‑DP, and why they matter for fisheries sample tracking:**
+2. Core Concepts & Tables  
+Below are the primary tables/concepts in the ERD, how they map to DwC-DP terms, and why they matter for fisheries sample tracking:
 
-| **Table**        | **DwC‑DP Class**     | **Purpose & Workflow Role** |
-|------------------|----------------------|------------------------------|
-| Project          | `dwc:Dataset`        | Top‑level logical dataset (annual program or research project). |
-| Event            | `dwc:Event`          | Any action at time/place: field collection, preservation, shipment. |
-| Organism         | `dwc:Organism`       | A fish or aggregation of fish involved in an Event. |
-| Occurrence       | `dwc:Occurrence`     | A catch record — counts, status, lifeStage, sex, etc., per Event. |
-| MaterialEntity   | `dwc:MaterialEntity` | Physical samples (scales, tissue, otoliths), tracking preservation & lineage. |
-| Container        | Compliance           | Holds multiple MaterialEntities; labelled vials, envelopes, scale-books. |
-| Shipment         | `dwc:Event`*         | Lab submission; a specialized Event subclass for transport to testing labs. |
-| Protocol         | `dwc:Protocol`       | Standard methods (sampling, preservation, molecular) linked by URI. |
-| Agent            | `dwc:Agent`          | People or organizations (collectors, lab techs). |
-| Identification   | `dwc:Identification` | Taxonomic determinations, e.g. field ID vs. DNA barcoding. |
-| Reference        | `dcmi:Reference`     | Publications, SOPs, scale books, lab manuals. |
-| Relationship     | `dwc:Relationship`   | Generic link for edge cases (partOf, derivedFrom, subsampleOf). |
-
-\*Technically DwC‑DP models shipments as Events with `eventType = "Shipment"`.
+| Concept (Table)                 | DwC-DP Concept (UpperCamelCase) or Terms (lowerCamelCase)                                       | Purpose & Workflow Role                                                                                                                                                                                                                                                               |
+|-------------------------|-----------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Project**             | `projectID`, `projectTitle`, `fundingAttributionID` | Captures the high-level “Project” at the parent event (e.g., trip) level, linking all related child events, occurrences, and samples.                                                                                                                                                |
+| **Trips & Actions**     | `dwc:Event`                                         | Models everything from “trip” and “haul” to preservation and shipment as Events with `eventType` (e.g., MaterialGathering, Preservation, Shipment). Use `parent_event_id` to nest sites under trips. Capture metadata, methods and external IDs via `event_assertion`, `event_protocol`, and `event_identifier`. |
+| **Catch (SampleGroup)** | `dwc:Event` (`eventType` = catch),`dwc:Occurrence`, <br>`dwc:Organism`                | Catches are events. `occurrenceID` rows are counts of each species in a catch, ie. represent each species (e.g., “20 Chinook”, “5 Coho” as seperate rows with `organismQuantity` = 20 or 5 and `organismQuantityType` = Count). Each 'occurrenceID` links to the catch `eventID`. Link each `occurrenceID` to an `organism` for individual-level metadata (sex, length, weight etc), which effectively separates total catch from the subset you actually sample.                               |
+| **Specimens/Samples**           | `dwc:MaterialEntity`                                 | Represents each tissue sample taken from the fish for further analysis as a `MaterialEntity`, link sub-samples with whole samples (eg. splitting a liver in half) with `parentMaterialEntityID`. Link samples to the whole fish via `organismID` and catch via `occurrence_id` and `eventID`.                                                                                  |
+| **Lab results**         | `dwc:MaterialAssertion`                             | Attaches lab measurements/analysis (genetic assignments, age etc.) to material records via MaterialAssertion linked to `material_entity_id`.                                                                                                                                    |
+| **Container**           | *Not a native DwC-DP class*                         | Physical sample containers (vials, envelopes, scale-books) are managed via **material_identifier** records on MaterialEntity (use `identifierType = "containerID"`) or with a `Container` concept table with `containerType` (vial, 96-well box, binder), `containerPurpose` attributes (archive, shipping etc.).                                                                                                                  |
+| **Shipment**            | `dwc:Event` (`eventType = "Shipment"`)              | Captures sample dispatch to testing labs as specialized Events.                                                                                                                                                                                                                       |
+| **Protocol**            | `dwc:Protocol`                                      | References standard methods (sampling, preservation, molecular) by URI where available; linked to Events or Analyses via `Protocol` table.                                                                                                                             |
+| **Agent**               | `dwc:Agent`                                         | Represents people or organizations (collectors, lab techs); linked via `event_agent_role`, `occurrence_agent_role`, etc.                                                                                                                                                            |
+| **Identification**      | `dwc:Identification`                                | Captures taxonomic determinations (field ID vs. DNA barcoding), linked to Occurrence or Material via `identificationID`, `identifiedByID`.                                                                                                                                            |                                                                                                                                                            |
+| **Relationship**        | `dwc:Relationship`                                  | Provides a generic linking mechanism for edge cases.                                                                                                                                                                                 |
 
 ---
 
 ## 3. Workflow Coverage
 
-**We cross‑walked eight major workflow phases against our model. Here's a quick audit:**
+**We cross-walked six major workflow phases against our model. Here's a quick audit:**
 
-| **Phase**               | **Key Tables**               | **Supported?** |
-|-------------------------|------------------------------|----------------|
-| Project & Acquisition   | Project, Event               | ✔ `projectID` on Event; ties to non‑DwC DFO project codes. |
-| Kit Preparation & Labelling | Container, Protocol     | ✔ `ContainerType`, label URIs; `protocolID` on Event presets kit SOP. |
-| Fish Capture & Biodata  | Event, Organism, Occurrence  | ✔ `Occurrence` ties catch counts + lifeStage/sex back to `Organism`. |
-| Tissue Collection       | MaterialEntity               | ✔ `type = "tissue"`, vials via `Container`, `hasDNA` flag. |
-| QC & Preservation       | MaterialEntity.condition     | ✔ `condition`, `disposition`, `preservationProtocolID`. |
-| Shipment to Lab         | Shipment                     | ✔ Links to `Agent`, retains `eventID` context. |
-| Lab Analysis & Identification | Identification, Protocol | ✔ DNA vs. scale ID via `identificationType` + `taxonAssignmentMethod`. |
+| **Phase**               | **Key Tables**                                        | **Supported?**                                                                                                                                                                                                   |
+|-------------------------|-------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Project & Acquisition   | Event                                                 | ✔ `projectID`, `projectTitle`, `fundingAttributionID` on Event; ties to external project codes.                                                                                                                 |
+| Fish Capture & Biodata  | Event, Occurrence, Organism                           | ✔ Occurrences per species (counts, `organismQuantity`, `lifeStage`, `sex`) link back to Organism for individual metadata (length, weight, etc.).                                                                  |
+| Tissue Collection       | MaterialEntity, material_identifier                   | ✔ `MaterialEntity` rows for each specimen and subsample (`parentMaterialEntityID`); container tracking via `material_identifier` (`identifierType = "containerID"`).                                               |
+| QC & Preservation       | MaterialEntity, Protocol                              | ✔ Preservation metadata (`condition`, `disposition`) on MaterialEntity; preservation methods linked via `Protocol` (`protocolType = "preservation"`).                                                             |
+| Shipment to Lab         | Event (`eventType = "Shipment"`), event_identifier, Agent | ✔ Sample dispatch as Events (`eventType="Shipment"`); external shipment IDs via `event_identifier`; sending `Agent` roles; materials link back via `derivation_event_id`.                                        |
+| Lab Analysis & Results  | Identification, Protocol, MaterialAssertion           | ✔ Taxonomic determinations via `Identification`; analysis methods via `Protocol`; lab measurements captured in `MaterialAssertion` (`assertionType="resultsAvailable"`, analyte values, priority flags, etc.). |
+
