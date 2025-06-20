@@ -2,9 +2,7 @@
 
 **Sample Tracking Platform Overview**
 
-NOTE: stamp_erd_dbdiagram.txt can be pasted into dbdiagram.io website app (free) to render an interactive ERD. I suggest we use [dbdiagram.io](https://dbdiagram.io) to make updates and changes and to visualize the ERD, and then copy the code from dbdiagram.io and commit it overtop of stamp_erd_dbdiagram.txt file in this repo for version control.
-
-STAMP.png is the erd exported from dbdiagram.io and can be replaced and updated to follow the above workflow.
+NOTE: stamp_erd_dbdiagram.txt is written in Database Markup Language (DBML) and can be pasted into dbdiagram.io website app (free) to render an interactive ERD. I suggest we use [dbdiagram.io](https://dbdiagram.io) to make updates and changes and to visualize the ERD, and then copy the code from dbdiagram.io and commit it overtop of stamp_erd_dbdiagram.txt file in this repo for version control.
 
 ## 1. Foundational Standards & Translation Layer
 
@@ -16,11 +14,15 @@ STAMP.png is the erd exported from dbdiagram.io and can be replaced and updated 
 - **OBO Foundry Ontologies (OBI, ENVO):** For laboratory protocols, environmental context, and material preservation semantics via URIs.
 
 **Why a Translation Layer?**  
-DFO's legacy fish‑data systems use inconsistent field names, acronyms, and table structures. By mapping them into a clean, standards‑based schema:
+DFO's legacy fish‑data systems use inconsistent modelling approaches to link various concepts. Furthermore field names are often highly bespoke, and acceptable values (enums) are rarely defined using strictly controlled controlled vocabulary. 
 
-1. **We avoid lock‑in to any specific tool.**
-2. **We make downstream data publishing, reporting, and integration far easier.**
-3. **We future‑proof against evolving community vocabularies.**
+The goal of aligning with the DwC-DP model is to use a highly flexible and extremely well thought out set of concepts and how they relate to make it easier to integrate different approaches found in DFO for modelling data collection and lab analyses. The goal is not to strictly adhere to the concept and term names used in DwC-DP when presenting materialized views to users, but to use the concepts and terms to map disparate schemas to. **By doing so we:**
+
+- Establish a single, well-defined schema that captures full provenance—from field collection through lab analysis—so scientists can trace each sample’s lineage and validate results.  
+- Provide consistent table and field names with explicit foreign-key relationships, making ETL pipelines and SQL queries straightforward for developers while delivering the contextual joins researchers need.  
+- Embed controlled vocabularies and standard identifiers (DwC-DP terms, OBO URIs) to ensure data is interoperable, discoverable, and reusable across projects and teams.  
+- Normalize disparate legacy and lab systems into a unified model, enabling seamless cross-study and multi-disciplinary analyses (e.g., linking environmental covariates with biological measurements).  
+- Preserve event, occurrence, and material metadata in structured form to support reproducible research, audit trails, and adherence to FAIR data principles.  
 
 ---
 
